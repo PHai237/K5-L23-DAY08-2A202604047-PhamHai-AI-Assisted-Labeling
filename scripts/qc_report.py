@@ -38,8 +38,14 @@ def main() -> None:
     rs = json.loads((qc / "review_stats.json").read_text(encoding="utf-8-sig")) if (qc / "review_stats.json").exists() else None
     sc = json.loads((qc / "self_check.json").read_text(encoding="utf-8-sig")) if (qc / "self_check.json").exists() else None
 
-    imgs = [s["image"] for s in sample]
-    n_img, n_obj = len(imgs), sum(int(s["so_doi_tuong"]) for s in sample)
+    imgs = [(s.get("image") or "").strip() for s in sample]
+    if not imgs or any(not i for i in imgs) or len(imgs) != len(set(imgs)):
+        die("qc_sample.csv rỗng, có tên ảnh trống hoặc trùng; hãy tạo lại mẫu QC.")
+    try:
+        n_obj = sum(int(s["so_doi_tuong"]) for s in sample)
+    except (KeyError, TypeError, ValueError):
+        die("qc_sample.csv có `so_doi_tuong` thiếu hoặc không phải số nguyên.")
+    n_img = len(imgs)
     warns, checked, err_rows = [], set(), []
     for i, row in enumerate(review, 2):
         img, et = (row.get("image") or "").strip(), (row.get("error_type") or "").strip().lower()
@@ -77,15 +83,20 @@ def main() -> None:
         rw.append(f"bắt bẫy {rs['traps']['rate'] * 100:.0f}% < {r['trap_catch_min'] * 100:.0f}% -> lô duyệt chưa đáng tin")
     if sc and not sc.get("pass"):
         rw.append("độ nhất quán (gán lại mù) dưới ngưỡng")
+    blockers = []
+    if unchecked:
+        blockers.append(f"còn {len(unchecked)}/{n_img} ảnh mẫu chưa kiểm")
+    if warns and any("bỏ qua" in w for w in warns):
+        blockers.append("phiếu QC có dòng không hợp lệ bị bỏ qua")
     if args.guideline_gap > 0 or args.data_problem > 0:
+        blockers.append(f"guideline chưa rõ ({args.guideline_gap} ca) / dữ liệu có vấn đề ({args.data_problem} ảnh)")
+    if blockers:
         decision = "HOLD"
-        reasons = [f"guideline chưa rõ ({args.guideline_gap} ca) / dữ liệu có vấn đề ({args.data_problem} ảnh) -> giữ lại làm rõ"]
+        reasons = [f"{x} -> chưa đủ bằng chứng để Release/Rework" for x in blockers]
     else:
         decision = "REWORK" if rw else "RELEASE"
         reasons = rw or [f"ảnh lỗi {0 if rate_img is None else rate_img * 100:.1f}% <= {r['error_rate_img_max'] * 100:.0f}%, "
                          "không lỗi hệ thống, bắt bẫy / nhất quán đạt (nếu đã đo)"]
-    if unchecked:
-        reasons.append("LƯU Ý: còn ảnh mẫu chưa kiểm -> kết luận chưa đáng tin")
     if n_img:
         k_, n_ = len(err_imgs), n_img
         z = 1.96

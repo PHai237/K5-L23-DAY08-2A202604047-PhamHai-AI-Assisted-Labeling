@@ -63,6 +63,16 @@ def norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def allocate_run_id(rows: List[dict], out: str) -> str:
+    """Keep an existing output's id; otherwise allocate after the largest rNN id."""
+    for row in rows:
+        if row.get("out") == out and re.fullmatch(r"r\d+", (row.get("run_id") or "").strip()):
+            return row["run_id"].strip()
+    used = [int(m.group(1)) for row in rows
+            if (m := re.fullmatch(r"r(\d+)", (row.get("run_id") or "").strip()))]
+    return f"r{max(used, default=0) + 1:02d}"
+
+
 def weights_path(name: str) -> str:
     """models/<name> nếu đã có hoặc tải được vào đó; nếu không thì để ultralytics tự xử lý."""
     p = MODELS_DIR / name
@@ -411,10 +421,11 @@ def main():
     params = " ".join(sys.argv[1:])
     runs = WORK / "runs.csv"
     rows = read_csv(runs) if runs.exists() else []
-    run = {"run_id": f"r{len(rows) + 1:02d}", "part": "", "model": a.model + (f"-{a.size}" if "yolo" in a.model else "") + (f"+sam({a.sam})" if a.segmenter in ("sam", "sam2") else ""),
+    run_out = rel(out)
+    run = {"run_id": allocate_run_id(rows, run_out), "part": "", "model": a.model + (f"-{a.size}" if "yolo" in a.model else "") + (f"+sam({a.sam})" if a.segmenter in ("sam", "sam2") else ""),
            "params": params, "split": a.split or "custom", "n_boxes": len(anns),
            "sec_per_img": round(dt / max(1, len(images)), 2), "what_went_right": "", "what_went_wrong": "", "decision": "",
-           "out": rel(out), "device": device, "n_images": len(images), "n_masks": sum(1 for x in anns if x["segmentation"]),
+           "out": run_out, "device": device, "n_images": len(images), "n_masks": sum(1 for x in anns if x["segmentation"]),
            "dropped": ";".join(f"{k}x{v}" for k, v in dropped.items()), "note": a.note}
     save_json(out / "run.json", run)
     rows = [r for r in rows if r.get("out") != run["out"]] + [run]

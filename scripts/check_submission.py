@@ -38,6 +38,28 @@ def md_text(p: Path, n_min: int, hint: str) -> str:
     return t
 
 
+def report_decision(text: str) -> str | None:
+    """Return an explicit student decision, not a template/list of alternatives."""
+    m = re.search(
+        r"(?im)^\s*(?:[-*]\s*)?(?:\*\*)?quyết\s+định(?:\*\*)?\s*:\s*(?:\*\*)?(release|hold|rework)\b",
+        text,
+    )
+    return m.group(1).upper() if m else None
+
+
+def model_families(rows: list[dict]) -> set[str]:
+    have = set()
+    for row in rows:
+        text = " ".join(str(row.get(k, "")) for k in ("model", "params")).lower()
+        if "yolo26" in text:
+            have.add("YOLO26")
+        if "yoloe" in text:
+            have.add("YOLOE")
+        if re.search(r"\bsam(?:\s*2(?:\.1)?|\s*3|[(_+-])", text):
+            have.add("SAM")
+    return have
+
+
 EXPECTED_RULES = {"min_box_height_px": 20, "match_iou": 0.5, "accept_iou": 0.9, "accept_mask_iou": 0.85, "trap_catch_min": 0.8,
                   "error_rate_img_max": 0.02, "self_iou_min": 0.85, "self_class_min": 0.95, "recall_target": 0.9, "self_unmatched_max": 0.1}
 
@@ -60,8 +82,8 @@ def main() -> None:
     # báo cáo chính (đã gộp recipe, QC, ghi chú cá nhân)
     if exists(SUB / "REPORT.md"):
         t = md_text(SUB / "REPORT.md", 7, "khuôn trong chính file REPORT.md")
-        if not re.search(r"\b(Release|Hold|Rework)\b", t, flags=re.I):
-            E("REPORT.md: chưa có quyết định Release / Hold / Rework")
+        if not report_decision(t):
+            E("REPORT.md: chưa có quyết định rõ theo dạng `Quyết định: Release|Hold|Rework` (liệt kê lựa chọn hoặc ghi CHƯA không được tính)")
         if "sam" not in t.lower():
             E("REPORT.md: chưa nêu phiên bản SAM bạn chọn (SAM là bắt buộc)")
 
@@ -83,10 +105,9 @@ def main() -> None:
         for i, r in enumerate(rows, 2):
             if not (r.get("what_went_wrong") or "").strip():
                 W(f"model_log.csv dòng {i}: cột what_went_wrong trống (ghi lỗi quan sát được)")
-        if len({r.get("model", "") for r in rows}) < 3:
-            E("model_log.csv: cần thử ≥ 3 model khác nhau (YOLO26, YOLOE, SAM)")
-        if not any("sam" in (r.get("model", "") + " " + r.get("params", "")).lower() for r in rows):
-            E("model_log.csv: SAM là BẮT BUỘC: cần ít nhất một dòng chạy SAM và ghi rõ phiên bản")
+        missing_families = {"YOLO26", "YOLOE", "SAM"} - model_families(rows)
+        if missing_families:
+            E("model_log.csv: thiếu họ model bắt buộc: " + ", ".join(sorted(missing_families)))
     tl = SUB / "time_log.csv"
     if exists(tl):
         have = {(r.get("step") or "").strip() for r in read_csv(tl) if (r.get("minutes") or "").strip()}
@@ -110,10 +131,8 @@ def main() -> None:
         E(f"validate_labels lỗi thực thi (exit {r.returncode})" + (f": {tail}" if tail else ""))
     for f in ("pre_traps.coco.json", "traps_key.json"):
         exists(SUB / "prelabel" / f, "(xem GUIDE.md Part 4)")
-    kp = SUB / "prelabel" / "traps_key.json"
-    if kp.exists() and mshv:
-        if str(json.loads(kp.read_text(encoding="utf-8-sig")).get("student")) != mshv:
-            E(f"traps_key.json: student không khớp MSHV trong README ({mshv}): tạo bẫy bằng đúng MSHV của bạn")
+    # Không mở traps_key.json tại bước tự kiểm: honor system cấm đọc trước khi export batch_reviewed.json.
+    # Tính hợp lệ của bẫy được kiểm gián tiếp từ review_stats.json sau Part 4.
     masks = list((SUB / "masks").glob("*.jpg")) + list((SUB / "masks").glob("*.png")) if (SUB / "masks").exists() else []
     if len(masks) < 3:
         E(f"submission/masks/: {len(masks)} ảnh mask, cần ≥ 3 (kết quả SAM của 3 vật, xem GUIDE.md Part 5)")
@@ -126,8 +145,8 @@ def main() -> None:
         d = json.loads((qc / "review_stats.json").read_text(encoding="utf-8-sig"))
         if not d.get("traps"):
             E("review_stats.json không có phần bẫy: chạy review_stats.py với --key submission/prelabel/traps_key.json")
-        elif d["traps"].get("n", 0) < 10:
-            E(f"review_stats.json: chỉ có {d['traps'].get('n', 0)} bẫy được chấm (cần ≥ 10 trong 12)")
+        elif d["traps"].get("n", 0) < 12:
+            E(f"review_stats.json: chỉ có {d['traps'].get('n', 0)} bẫy được chấm (cần đủ 12)")
         if not d.get("gold"):
             E("review_stats.json không có phần gold: chạy review_stats.py với --pre submission/prelabel/pre_traps.coco.json "
               "(file đầy đủ batch+gold, không dùng pre_traps_import) và --gold submission/labels/gold_manual.json")
@@ -150,12 +169,32 @@ def main() -> None:
 
     # git
     try:
-        n = int(subprocess.run(
-            ["git", "rev-list", "--count", "HEAD"], cwd=ROOT, capture_output=True, text=True,
+        cfg_name = subprocess.run(
+            ["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True,
             encoding="utf-8", errors="replace",
-        ).stdout.strip() or 0)
+        ).stdout.strip()
+        cfg_email = subprocess.run(
+            ["git", "config", "user.email"], cwd=ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        ).stdout.strip().lower()
+        authors = subprocess.run(
+            ["git", "log", "--format=%an%x09%ae"], cwd=ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        ).stdout.splitlines()
+        n = sum(1 for line in authors if "\t" in line and (
+            (cfg_email and line.rsplit("\t", 1)[1].strip().lower() == cfg_email)
+            or (cfg_name and line.rsplit("\t", 1)[0].strip() == cfg_name)
+        ))
         if n < 4:
-            W(f"chỉ có {n} commit; nên commit theo từng Part (≥ 4)")
+            W(f"chỉ tìm thấy {n} commit khớp git user.name/user.email hiện tại; cần ≥ 4 commit của chính học viên theo từng Part")
+        if mshv:
+            remote = subprocess.run(
+                ["git", "remote", "get-url", "origin"], cwd=ROOT, capture_output=True, text=True,
+                encoding="utf-8", errors="replace",
+            ).stdout.strip().rstrip("/")
+            repo_name = re.sub(r"\.git$", "", remote.rsplit("/", 1)[-1]) if remote else ""
+            if repo_name and not re.fullmatch(rf"K5-L23-DAY08-{re.escape(mshv)}-[A-Za-z]+-AIPrelabel", repo_name, flags=re.I):
+                W(f"tên repo '{repo_name}' không khớp mẫu SUBMISSION.md cho MSHV {mshv}; bỏ qua nếu coach đã cho quy ước khác")
         tracked = subprocess.run(
             ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True,
             encoding="utf-8", errors="replace",

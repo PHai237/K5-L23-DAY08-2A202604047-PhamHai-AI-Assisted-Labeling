@@ -12,6 +12,7 @@ Ghi <out>/<name>.jpg (mask tô màu, chấm xanh = dương, chấm đỏ = âm) 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -61,6 +62,13 @@ def main():
     pts = [pt(s) for s in a.pos] + [pt(s) for s in a.neg]
     labels = [1] * len(a.pos) + [0] * len(a.neg)
     box = parse_box(a.box) if a.box else None
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    for x, y in pts:
+        if not (0 <= x < w and 0 <= y < h):
+            die(f"Click ({x:g},{y:g}) nằm ngoài ảnh {w}x{h}.")
+    if box and (box[0] < 0 or box[1] < 0 or box[2] > w or box[3] > h):
+        die(f"--box phải nằm trong ảnh {w}x{h}.")
     from ultralytics import SAM
     model = SAM(weights_path(a.sam))
     kw = {}
@@ -69,11 +77,11 @@ def main():
         kw["labels"] = [labels]
     if box:
         kw["bboxes"] = [box]
-    r = model(str(path), device=pick_device(a.device), verbose=False, **kw)[0]
+    device = pick_device(a.device)
+    r = model(str(path), device=device, verbose=False, **kw)[0]
     if r.masks is None or len(r.masks.data) == 0:
         die("SAM không trả mask nào: thử click vào giữa vật hơn.")
     m = r.masks.data[0].cpu().numpy() > 0.5
-    im = Image.open(path).convert("RGB")
     ov = np.array(im).astype(np.float32)
     ov[m] = ov[m] * 0.45 + np.array([230, 25, 75], np.float32) * 0.55
     out = Image.fromarray(ov.astype(np.uint8))
@@ -85,9 +93,27 @@ def main():
         d.rectangle(box, outline="yellow", width=2)
     o = Path(a.out)
     o.mkdir(parents=True, exist_ok=True)
-    out.save(o / f"{a.name}.jpg", quality=90)
     polys = mask_to_polys(m.astype(np.uint8))
+    for poly in polys:
+        points = list(zip(poly[0::2], poly[1::2]))
+        if len(points) >= 3:
+            d.line(points + [points[0]], fill=(0, 255, 255), width=2)
+    out.save(o / f"{a.name}.jpg", quality=90)
+    metadata = {
+        "image": a.image,
+        "sam": a.sam,
+        "device": device,
+        "positive_clicks": [list(p) for p in pts[:len(a.pos)]],
+        "negative_clicks": [list(p) for p in pts[len(a.pos):]],
+        "n_clicks": len(pts),
+        "box": box,
+        "mask_pixels": int(m.sum()),
+        "mask_image_pct": round(float(m.sum() / m.size * 100), 3),
+        "polygons": len(polys),
+    }
+    (o / f"{a.name}.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Mask: {int(m.sum())} px ({m.sum() / m.size * 100:.1f}% ảnh), {len(polys)} polygon -> {rel(o / f'{a.name}.jpg')}")
+    print(f"Metadata thật (model, click, box, diện tích): {rel(o / f'{a.name}.json')}")
 
 
 if __name__ == "__main__":

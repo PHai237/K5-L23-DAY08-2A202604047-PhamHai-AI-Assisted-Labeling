@@ -264,7 +264,7 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         (self.root / "cvat" / "labels_generated.json").unlink(missing_ok=True)
         for script_name in (
             "build_release", "check_env", "check_submission", "coco_to_cvat_xml", "download_models",
-            "inject_traps", "make_cvat_labels", "merge_prelabels", "prelabel", "prepare_workdirs",
+            "inject_traps", "inspect_sam_masks", "make_cvat_labels", "merge_prelabels", "prelabel", "prepare_workdirs",
             "qc_report", "qc_sample", "review_stats", "sam2_points", "self_consistency",
             "threshold_sweep", "validate_labels", "viz",
         ):
@@ -424,6 +424,16 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         self.assertIn("LỖI:", out_s3)
         self.assertNotIn("Traceback", out_s3)
 
+        out_s4 = self.run_script(
+            "sam2_points",
+            "--image", "img_013.jpg",
+            "--pos", "99999,10",
+            "--out", "work/tmp_s",
+            success=False,
+        )
+        self.assertIn("ngoài ảnh", out_s4)
+        self.assertNotIn("ultralytics", out_s4)
+
         # validate_labels must format 19.6px as 19.6px (not rounded to 20px)
         gold_path = self.sub / "labels" / "gold_manual.json"
         gold_names = self._split_names("gold")
@@ -431,7 +441,8 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
             "images": [{"id": i, "file_name": n, "width": self.img_sizes[n][0], "height": self.img_sizes[n][1]}
                        for i, n in enumerate(gold_names, 1)],
             "categories": [{"id": 1, "name": "person"}],
-            "annotations": [{"id": 1, "image_id": 1, "category_id": 1, "bbox": [10, 10, 20, 19.6], "segmentation": []}],
+            "annotations": [{"id": 1, "image_id": 1, "category_id": 1, "bbox": [10, 10, 20, 19.6], "segmentation": [],
+                             "area": 392, "attributes": {"conf": "", "can_review": "false"}}],
         }
         gold_path.write_text(json.dumps(coco), encoding="utf-8")
         out_v = self.run_script("validate_labels", "submission/labels/gold_manual.json", "--expect", "gold")
@@ -520,6 +531,121 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         subprocess.run(["git", "add", "-f", "models/fake.pt"], cwd=self.root, check=True, capture_output=True, env=env)
         out_bad = self.run_script("check_submission", success=False)
         self.assertIn("models/", out_bad)
+
+    def test_bug10_qc_sample_rerun_is_atomic_and_detects_mismatch(self) -> None:
+        self._build_valid_submission()
+        sample = self.sub / "qc" / "qc_sample.csv"
+        review = self.sub / "qc" / "qc_review.csv"
+        before_sample, before_review = sample.read_bytes(), review.read_bytes()
+        out = self.run_script("qc_sample", "--n", "1", "--seed", "999")
+        self.assertIn("Giữ nguyên", out)
+        self.assertEqual(before_sample, sample.read_bytes())
+        self.assertEqual(before_review, review.read_bytes())
+
+        with review.open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+        with review.open("w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["image", "object_id", "error_type", "reviewer", "note"])
+            w.writeheader()
+            w.writerows(rows[:-1])
+        out_bad = self.run_script("qc_sample", success=False)
+        self.assertIn("không đồng bộ", out_bad)
+        self.assertEqual(before_sample, sample.read_bytes())
+
+    def test_bug11_qc_report_holds_incomplete_or_invalid_review(self) -> None:
+        self._build_valid_submission()
+        review = self.sub / "qc" / "qc_review.csv"
+        with review.open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+        rows[0]["error_type"] = ""
+        with review.open("w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["image", "object_id", "error_type", "reviewer", "note"])
+            w.writeheader()
+            w.writerows(rows)
+        out = self.run_script("qc_report")
+        self.assertIn("**HOLD**", out)
+        self.assertNotIn("**RELEASE**", out)
+        self.assertIn("chưa kiểm", out.lower())
+
+    def test_bug12_submission_semantics_and_trap_key_honor_guard(self) -> None:
+        self._build_valid_submission()
+        report = self.sub / "REPORT.md"
+        original_report = report.read_text(encoding="utf-8")
+        report.write_text(original_report.replace("Quyết định: Rework", "Quyết định Release / Hold / Rework: CHƯA ĐƯA RA"), encoding="utf-8")
+        out_decision = self.run_script("check_submission", success=False)
+        self.assertIn("quyết định rõ", out_decision)
+        report.write_text(original_report, encoding="utf-8")
+
+        model_log = self.sub / "model_log.csv"
+        original_log = model_log.read_text(encoding="utf-8")
+        model_log.write_text(original_log.replace("yoloe", "yolo26-l"), encoding="utf-8")
+        out_model = self.run_script("check_submission", success=False)
+        self.assertIn("YOLOE", out_model)
+        model_log.write_text(original_log, encoding="utf-8")
+
+        stats_path = self.sub / "qc" / "review_stats.json"
+        stats = json.loads(stats_path.read_text(encoding="utf-8"))
+        stats["traps"]["n"] = 11
+        stats_path.write_text(json.dumps(stats), encoding="utf-8")
+        out_traps = self.run_script("check_submission", success=False)
+        self.assertIn("cần đủ 12", out_traps)
+        stats["traps"]["n"] = 12
+        stats_path.write_text(json.dumps(stats), encoding="utf-8")
+
+        # check_submission must not open the honor-system key just to check completeness.
+        (self.sub / "prelabel" / "traps_key.json").write_text("not-json-and-must-not-be-read", encoding="utf-8")
+        self.assertIn("0 lỗi", self.run_script("check_submission"))
+
+    def test_bug13_validate_coco_integrity_and_exact_scope(self) -> None:
+        self._build_valid_submission()
+        gold_path = self.sub / "labels" / "gold_manual.json"
+        original = json.loads(gold_path.read_text(encoding="utf-8"))
+        extra_name = self._split_names("batch")[0]
+        w, h = self.img_sizes[extra_name]
+        extra = json.loads(json.dumps(original))
+        extra["images"].append({"id": 999, "file_name": extra_name, "width": w, "height": h})
+        gold_path.write_text(json.dumps(extra), encoding="utf-8")
+        out_extra = self.run_script("validate_labels", "submission/labels/gold_manual.json", "--expect", "gold", success=False)
+        self.assertIn("ngoài phạm vi mong đợi", out_extra)
+
+        broken = json.loads(json.dumps(original))
+        broken["annotations"][1]["id"] = broken["annotations"][0]["id"]
+        broken["annotations"][0]["bbox"][2] = 0
+        broken["annotations"][0]["area"] = 0
+        broken["annotations"][0]["attributes"]["can_review"] = "maybe"
+        gold_path.write_text(json.dumps(broken), encoding="utf-8")
+        out_broken = self.run_script("validate_labels", "submission/labels/gold_manual.json", "--expect", "gold", success=False)
+        self.assertIn("annotation id bị trùng", out_broken)
+        self.assertIn("chiều rộng/cao không dương", out_broken)
+        self.assertIn("can_review", out_broken)
+        self.assertIn("area", out_broken)
+
+    def test_bug14_run_id_allocator_and_sam_inspector(self) -> None:
+        code = (
+            "import sys; sys.path.insert(0, r'" + str(self.root / "scripts") + "'); "
+            "from prelabel import allocate_run_id; "
+            "rows=[{'run_id':'r01','out':'work/a'},{'run_id':'r03','out':'work/b'}]; "
+            "print(allocate_run_id(rows,'work/a')); print(allocate_run_id(rows,'work/c'))"
+        )
+        proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=clean_cp1252_env())
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.splitlines(), ["r01", "r04"])
+
+        name = self._split_names("pilot")[0]
+        w, h = self.img_sizes[name]
+        coco = {
+            "images": [{"id": 1, "file_name": name, "width": w, "height": h}],
+            "categories": [{"id": 1, "name": "person"}],
+            "annotations": [{"id": 1, "image_id": 1, "category_id": 1, "bbox": [10, 10, 40, 40],
+                             "area": 900, "segmentation": [[15, 15, 45, 15, 45, 45, 15, 45]],
+                             "attributes": {"conf": "0.8", "can_review": "false"}}],
+        }
+        coco_path = self.root / "work" / "sam_fixture.coco.json"
+        coco_path.parent.mkdir(parents=True, exist_ok=True)
+        coco_path.write_text(json.dumps(coco), encoding="utf-8")
+        self.run_script("inspect_sam_masks", "--coco", str(coco_path), "--out", "work/sam_audit")
+        self.assertTrue((self.root / "work" / "sam_audit" / "mask_stats.csv").exists())
+        self.assertTrue((self.root / "work" / "sam_audit" / f"{Path(name).stem}_sam_audit.jpg").exists())
 
     def test_advanced_xml_and_self_consistency_cp1252(self) -> None:
         self._build_valid_submission()

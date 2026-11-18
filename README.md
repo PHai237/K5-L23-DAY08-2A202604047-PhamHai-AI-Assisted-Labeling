@@ -15,7 +15,7 @@
 
 > **Máy gán sẵn, người sửa.** Nhanh hơn vẽ tay — nhưng **bạn** vẫn là chốt chặn chất lượng, và bạn phải **đo** được điều đó.
 
-> **Tiến độ bài cá nhân (18/11/2026):** đã lưu Gold 4 ảnh, kết quả tour model và chọn ngưỡng (Part 1–3); Part 4 đã export 24 ảnh Batch sau review và sinh `submission/qc/review_stats.{json,md}`. Part 5–6 đang thực hiện. Số liệu và giới hạn đo được ghi trong [REPORT.md](submission/REPORT.md); hướng dẫn click SAM tại [PART5_SAM_WORKFLOW.md](docs/PART5_SAM_WORKFLOW.md).
+> **Tiến độ bài cá nhân (18/11/2026):** có bằng chứng Part 1–6: Gold 4 ảnh; tour model và ngưỡng; Batch 24 ảnh sau review, **11/12 bẫy sau Rework** (lượt đầu 8/12 theo xác nhận học viên); 3 mask SAM 2.1 Tiny, 3 quyết định calibration v1.1, QC hai vòng và release candidate 24 ảnh. QC vòng 1 **1/216 đối tượng, 1/8 ảnh → script gợi ý REWORK**; phiếu sau sửa **0/216, 0/8 → script gợi ý RELEASE**, nhưng chỉ kiểm lại ảnh đã sửa, không kiểm độc lập lại cả 8 ảnh. **Quyết định cuối cùng do học viên chốt.** Số liệu, giới hạn và cảnh báo: [REPORT.md](submission/REPORT.md).
 
 ## Bạn sẽ làm gì
 
@@ -128,6 +128,9 @@ Chi tiết và cách ghi vào `REPORT.md` mục 1: [docs/MODELS.md](docs/MODELS.
 | Tour 3 model: YOLO26, SAM, YOLOE | [docs/MODELS.md](docs/MODELS.md) |
 | Bài nâng cao (tuỳ chọn): Grounding DINO, OWLv2, SAM 3, `cvat-cli`, pilot, mask 8 ảnh | [docs/ADVANCED.md](docs/ADVANCED.md) |
 | CVAT: import, AI Tools, `cvat-cli` (có hình) | [docs/CVAT_AI.md](docs/CVAT_AI.md) |
+| Bằng chứng SAM 2.1 Tiny (3 JPG/JSON) | [submission/masks/](submission/masks/) |
+| Quyết định calibration và guideline v1.1 | [calibration_decisions.csv](submission/qc/calibration_decisions.csv), [guideline_v1.1_calibrated.md](submission/guidelines/guideline_v1.1_calibrated.md) |
+| QC hai vòng và bộ release candidate | [submission/qc/](submission/qc/), [submission/release/](submission/release/) |
 | Quy trình review, ảnh bẫy | [docs/REVIEW_CHECKLIST.md](docs/REVIEW_CHECKLIST.md) |
 | Chọn ngưỡng theo lớp (Part 3) | [docs/THRESHOLD.md](docs/THRESHOLD.md) |
 | Calibration & QC (Part 6) | [docs/CALIBRATION_QC.md](docs/CALIBRATION_QC.md) |

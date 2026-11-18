@@ -5,7 +5,7 @@
 - Lớp (L2 / L3 / khác): L2B
 - Tài khoản GitHub: PHai237
 - Repo bài nộp (URL): https://github.com/PHai237/K5-L23-DAY08-2A202604047-PhamHai-AI-Assisted-Labeling
-- Commit chốt bài (hash): CHƯA CẬP NHẬT
+- Commit chốt bài (hash): 6f769ba (mốc chốt nội dung; commit sau chỉ cập nhật metadata)
 - Máy: Windows PowerShell, Python 3.12 (`C:\My Future\Day08_CPU\.venv`); các lượt model đã xác minh chạy bằng CPU; GPU không dùng trong các lượt thực nghiệm; cấu hình GPU phần cứng chưa xác minh
 - CVAT (Docker): v2.81.0
 

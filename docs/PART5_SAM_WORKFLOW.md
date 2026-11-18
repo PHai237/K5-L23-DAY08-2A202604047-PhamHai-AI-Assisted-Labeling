@@ -25,7 +25,7 @@ Thêm `--pos "x,y"`, `--neg "x,y"` hoặc `--box "x1,y1,x2,y2"` khi thực sự 
 - `<name>.jpg`: overlay mask, biên cyan, click dương xanh, click âm đỏ và box vàng nếu có.
 - `<name>.json`: model, thiết bị, toàn bộ click thật, số click và diện tích mask để đối chiếu REPORT.
 
-Lặp lại cho đủ ít nhất ba vật. Không sửa số click trong JSON; nếu chạy lại, dùng tên khác để so sánh trước khi chọn kết quả cuối.
+Lặp lại cho đủ ít nhất ba vật. Không sửa số click trong JSON; nếu chạy lại, dùng tên khác để so sánh trước khi chọn kết quả cuối. Script mặc định từ chối ghi đè ảnh/metadata cùng tên; chỉ dùng `--force` khi thật sự muốn thay bản cũ.
 
 ## 3. Tự đánh giá trước khi ghi REPORT
 

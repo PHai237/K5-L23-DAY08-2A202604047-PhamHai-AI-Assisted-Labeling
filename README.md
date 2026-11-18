@@ -15,6 +15,8 @@
 
 > **Máy gán sẵn, người sửa.** Nhanh hơn vẽ tay — nhưng **bạn** vẫn là chốt chặn chất lượng, và bạn phải **đo** được điều đó.
 
+> **Tiến độ bài cá nhân (18/11/2026):** đã lưu Gold 4 ảnh, kết quả tour model và chọn ngưỡng (Part 1–3); Part 4 đã export 24 ảnh Batch sau review và sinh `submission/qc/review_stats.{json,md}`. Part 5–6 đang thực hiện. Số liệu và giới hạn đo được ghi trong [REPORT.md](submission/REPORT.md); hướng dẫn click SAM tại [PART5_SAM_WORKFLOW.md](docs/PART5_SAM_WORKFLOW.md).
+
 ## Bạn sẽ làm gì
 
 Trong **4 giờ trên lớp** (cài đặt làm trước ~45 phút): chạy ba công cụ pre-label **từ đơn giản đến phức tạp** (YOLO26 → SAM → YOLOE), đưa kết quả vào **CVAT**, **review có quy trình** (có ảnh bẫy để đo chính bạn), rồi **calibration** lại nhãn và guideline.

@@ -1,6 +1,6 @@
 # Báo cáo Day 08 — 2A202604047 - Phạm Hải
 
-> **Trạng thái:** Bản nháp sau Part 3 (17/11/2026). Các mục phụ thuộc Part 4–6 được giữ ở trạng thái **chưa thực hiện**. Chỉ cập nhật bằng quan sát và số liệu thật sau khi hoàn thành từng phần. Các nhận xét và quyết định cuối cùng cần do học viên kiểm tra, diễn đạt và chịu trách nhiệm.
+> **Trạng thái:** Bản nháp sau Part 4 (18/11/2026). Các mục phụ thuộc Part 5–6 được giữ ở trạng thái **chưa thực hiện**. Số liệu Part 4 lấy từ `submission/qc/review_stats.json` và `submission/time_log.csv`. Các nhận xét và quyết định cuối cùng cần do học viên kiểm tra, diễn đạt và chịu trách nhiệm.
 
 ## 1. Model và recipe (Part 2–3)
 
@@ -26,30 +26,31 @@
 
 ## 2. AI error profile (từ `qc/review_stats.md`)
 
-**Chưa thực hiện Part 4.** Không có số liệu `accepted`, `edited`, `deleted`, `added` hoặc phép đo sau review. Sẽ điền theo `submission/qc/review_stats.md` sau khi export `submission/labels/batch_reviewed.json`.
+Đã export **24 ảnh Batch** (`submission/labels/batch_reviewed.json`). `review_stats.json` loại **21 đối tượng quanh bẫy** khỏi profile máy, còn **429 box máy** và **521 đối tượng sau duyệt** để tính các tỉ lệ dưới đây. File COCO Batch có 531 annotation kể cả `ignore_region`; không dùng 531 làm mẫu số cho profile máy.
 
 | Trạng thái | Số | Tỉ lệ | Mẫu số |
 |---|---|---|---|
-| accepted | Chưa có | Chưa có | Box máy trong Batch |
-| edited | Chưa có | Chưa có | Box máy trong Batch |
-| deleted | Chưa có | Chưa có | Box máy trong Batch |
-| added | Chưa có | Chưa có | Đối tượng sau duyệt |
+| accepted | 280 | 65,3% | 429 box máy |
+| edited | 99 | 23,1% | 429 box máy |
+| deleted | 50 | 11,7% | 429 box máy |
+| added | 142 | 27,3% | 521 đối tượng sau duyệt |
 
-- Lớp máy yếu nhất và ảnh minh chứng: **chưa kết luận**, chờ thống kê sau review.
-- Precision / recall của máy so với Gold: **chưa trích từ `review_stats`**, không suy từ riêng bảng threshold sweep.
+- Trong `review_stats.json`, **8** trường hợp `deleted + added` được ước tính là đổi lớp; thuật toán ghép box chỉ là phép đo gần đúng, cần đối chiếu ca thực tế trước khi kết luận loại lỗi.
+- Lớp máy yếu nhất và ảnh minh chứng: **học viên cần tự chọn và xác nhận bằng ảnh**, bảng theo lớp trong `submission/qc/review_stats.md` là nguồn số liệu.
+- Trên **4 ảnh Gold**, máy có **45 TP, 15 FP, 13 FN**: precision **45/60 = 75,0%**, recall **45/58 = 77,6%** (58 vật Gold không tính `ignore_region`). Vì chọn ngưỡng trên cùng Gold, phép đo này lạc quan; không coi là hiệu năng trên ảnh mới.
 
 ## 3. Thiên kiến tự động hóa và ảnh bẫy
 
-**Chưa thực hiện Part 4.** Chưa cài và chưa chấm 12 bẫy; **không mở `submission/prelabel/traps_key.json` trước khi export `batch_reviewed.json`**.
+Sau export Batch và chạy `review_stats.py`, kết quả tự động ghi **11/12 = 91,7%** bẫy được bắt. Theo loại: `missing` 2/3, `extra` 3/3, `loose` 3/3, `wrong_class` 3/3. Nguồn: `submission/qc/review_stats.json`.
 
-- Số bẫy bắt được, loại bẫy lọt, bước checklist bị bỏ: **chưa có dữ liệu**.
-- Mối quan hệ giữa tỉ lệ `accepted` và khả năng phát hiện bẫy: **sẽ phân tích bằng số liệu thực tế**, không kết luận trước.
+- Bẫy lọt: `img_005.jpg`, loại `missing`. **Học viên cần tự xác nhận** vì sao bẫy lọt và bước checklist nào đã bỏ; con số không tự xác định được nguyên nhân.
+- Mối quan hệ giữa tỉ lệ `accepted` **280/429** và bắt bẫy **11/12**: **học viên tự phân tích**, không suy luận chỉ từ hai tỉ lệ.
 
 ## 4. Máy có đáng dùng không?
 
-- **Thời gian gán Gold:** `submission/time_log.csv` ghi **25 phút/4 ảnh**, tức **ước lượng 6,25 phút/ảnh**. Đây là **ước lượng sau khi gán, không phải thời gian bấm đồng hồ**; không được sử dụng như phép đo thời gian thực chính xác. **Thời gian review Batch:** chưa có.
+- **Thời gian gán Gold:** `submission/time_log.csv` ghi **25 phút/4 ảnh**, tức **ước lượng 6,25 phút/ảnh** sau khi gán, không phải thời gian bấm đồng hồ. **Thời gian review Batch:** log ghi khoảng **101,05 phút/24 ảnh = 4,21 phút/ảnh**, gồm ba phiên 28:05 + 14:50 + 58:08. Đây cũng là thời gian xấp xỉ; không dùng hai số này để khẳng định mức tiết kiệm thời gian chính xác.
 - **Kết luận có sử dụng pre-label cho công việc thật hay không:** **chưa quyết định**; cần đối chiếu `accepted / edited / deleted / added`, recall trên Gold, số bẫy bắt được và thời gian Batch thực tế.
-- **Ba quy tắc giảm thiên kiến có thể đo được:** sẽ do học viên tự đưa ra sau khi review và biết lỗi nào mình đã bỏ sót; chưa ghi thay quyết định cá nhân.
+- **Ba quy tắc giảm thiên kiến có thể đo được:** học viên tự viết sau khi xem lại bẫy lọt và quy trình duyệt; chưa ghi thay quyết định cá nhân.
 
 ## 5. Mask SAM cho 3 vật (Part 5)
 
@@ -86,4 +87,5 @@
 - **Dùng cache `data/cache/`?** **Không:** hai model đã được chạy trực tiếp trên 36 ảnh (`y26_all`, `y26s_all`, `yoloe_all`) ở confidence 0.05.
 - **Bug script đã sửa với hỗ trợ của Codex (nhánh `codex/lab8-fixes`):** bảo vệ `qc_sample.py` khỏi làm lệch mẫu và phiếu review khi chạy lại; buộc `qc_report.py` gợi ý Hold khi mẫu chưa kiểm đủ; siết kiểm tra cấu trúc COCO, họ model, quyết định báo cáo, đủ 12 bẫy và commit của học viên; cấp `run_id` theo mã lớn nhất và giữ mã khi chạy lại cùng output. Có thêm unit test và công cụ overlay/kiểm tra hình học mask. Các thay đổi chỉ tác động code/tài liệu, không sửa Gold, trap/pre-trap, threshold hay kết quả review. Học viên cần đọc diff và xác nhận trước khi merge.
 - **Giới hạn thời gian:** mục `gold_manual` trong `time_log.csv` là **ước lượng 25 phút**, không phải thời gian bấm đồng hồ. Cần khai báo điều này, không sửa thành số đo thật.
+- **Cảnh báo kiểm nhãn trước Part 5–6:** `validate_labels.py --all` báo box `car` #278 tại `img_023.jpg` cao **15,4 px**, thấp hơn quy tắc 20 px. Script vẫn trả `OK` vì đây là cảnh báo; học viên cần tự đối chiếu ảnh và guideline, không tự động sửa nhãn đã export.
 - **Một điều sẽ làm khác lần sau:** **học viên tự bổ sung** sau khi hoàn thành review và tự đánh giá quy trình.

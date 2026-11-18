@@ -11,9 +11,9 @@
 
 ## Kết quả tóm tắt (điền cuối bài; số lấy từ `submission/qc/*`, kèm mẫu số)
 
-- Máy: accepted / edited / deleted: CHƯA CẬP NHẬT (đợi Part 4); added: CHƯA CẬP NHẬT (đợi Part 4)
-- So với gold: precision / recall của **máy**: CHƯA CẬP NHẬT (đợi `review_stats`)
-- Bắt bẫy: CHƯA CẬP NHẬT/12 (đợi hoàn tất review)
-- Thời gian: gán tay ước lượng 25 phút/4 ảnh, không phải số bấm đồng hồ; duyệt có pre-label: CHƯA CẬP NHẬT
+- Máy: accepted **280/429 = 65,3%**; edited **99/429 = 23,1%**; deleted **50/429 = 11,7%**; added **142/521 = 27,3%** đối tượng sau duyệt. Nguồn: `submission/qc/review_stats.json`; thống kê đã loại 21 đối tượng quanh bẫy.
+- So với Gold: precision của **máy** **45/60 = 75,0%**; recall **45/58 = 77,6%** trên 4 ảnh. Ngưỡng được chọn trên chính Gold nên số đo lạc quan.
+- Bắt bẫy: **11/12 = 91,7%**; một bẫy `missing` ở `img_005.jpg` chưa được bắt. Nguồn: `submission/qc/review_stats.json`.
+- Thời gian: gán tay Gold **ước lượng 25 phút/4 ảnh = 6,25 phút/ảnh**, không phải số bấm đồng hồ; duyệt Batch **xấp xỉ 101,05 phút/24 ảnh = 4,21 phút/ảnh**. Nguồn: `submission/time_log.csv`; không suy ra chênh lệch thời gian chính xác từ hai phép ghi này.
 - Lỗi QC: CHƯA CẬP NHẬT theo ảnh; CHƯA CẬP NHẬT theo đối tượng (đợi Part 6)
 - **Quyết định:** CHƯA CẬP NHẬT — học viên tự quyết định sau Part 6

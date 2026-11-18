@@ -1,0 +1,21 @@
+{
+  "image": "img_017.jpg",
+  "sam": "sam2.1_t.pt",
+  "device": "cpu",
+  "positive_clicks": [
+    [
+      800.0,
+      520.0
+    ],
+    [
+      565.0,
+      520.0
+    ]
+  ],
+  "negative_clicks": [],
+  "n_clicks": 2,
+  "box": null,
+  "mask_pixels": 84963,
+  "mask_image_pct": 12.166,
+  "polygons": 1
+}

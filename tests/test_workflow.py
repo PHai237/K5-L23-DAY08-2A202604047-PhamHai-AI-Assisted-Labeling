@@ -552,6 +552,11 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         self.assertIn("không đồng bộ", out_bad)
         self.assertEqual(before_sample, sample.read_bytes())
 
+        review.unlink()
+        out_missing = self.run_script("qc_sample", success=False)
+        self.assertIn("thiếu", out_missing)
+        self.assertEqual(before_sample, sample.read_bytes())
+
     def test_bug11_qc_report_holds_incomplete_or_invalid_review(self) -> None:
         self._build_valid_submission()
         review = self.sub / "qc" / "qc_review.csv"
@@ -566,6 +571,18 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         self.assertIn("**HOLD**", out)
         self.assertNotIn("**RELEASE**", out)
         self.assertIn("chưa kiểm", out.lower())
+
+        # A complete QC sheet alone is insufficient if Part 4 statistics are missing.
+        for row in rows:
+            row["error_type"] = "khong"
+        with review.open("w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["image", "object_id", "error_type", "reviewer", "note"])
+            w.writeheader()
+            w.writerows(rows)
+        (self.sub / "qc" / "review_stats.json").unlink()
+        out_missing_stats = self.run_script("qc_report")
+        self.assertIn("**HOLD**", out_missing_stats)
+        self.assertIn("thiếu review_stats.json", out_missing_stats)
 
     def test_bug12_submission_semantics_and_trap_key_honor_guard(self) -> None:
         self._build_valid_submission()
@@ -588,13 +605,28 @@ class Day08RegressionAndWorkflowTest(unittest.TestCase):
         stats["traps"]["n"] = 11
         stats_path.write_text(json.dumps(stats), encoding="utf-8")
         out_traps = self.run_script("check_submission", success=False)
-        self.assertIn("cần đủ 12", out_traps)
+        self.assertIn("tạo và chấm 12 bẫy", out_traps)
         stats["traps"]["n"] = 12
+        stats["traps"]["caught"] = 11
+        stats["traps"]["rate"] = 11 / 12
         stats_path.write_text(json.dumps(stats), encoding="utf-8")
 
         # check_submission must not open the honor-system key just to check completeness.
         (self.sub / "prelabel" / "traps_key.json").write_text("not-json-and-must-not-be-read", encoding="utf-8")
         self.assertIn("0 lỗi", self.run_script("check_submission"))
+
+    def test_bug15_sam_point_output_requires_new_name(self) -> None:
+        output = self.root / "work" / "sam_saved"
+        output.mkdir(parents=True)
+        existing = output / "already_clicked.jpg"
+        existing.write_bytes(b"preserve-click-overlay")
+        out = self.run_script(
+            "sam2_points", "--image", "img_013.jpg", "--pos", "20,20",
+            "--out", str(output), "--name", "already_clicked", success=False,
+        )
+        self.assertIn("--name khác", out)
+        self.assertEqual(existing.read_bytes(), b"preserve-click-overlay")
+        self.assertNotIn("ultralytics", out)
 
     def test_bug13_validate_coco_integrity_and_exact_scope(self) -> None:
         self._build_valid_submission()

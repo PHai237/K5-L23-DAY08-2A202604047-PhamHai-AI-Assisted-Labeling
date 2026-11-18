@@ -63,6 +63,9 @@ def main() -> None:
     nobj = lambda n: sum(1 for o in cs.objects[n] if o.cls != tax.ignore)  # noqa: E731
     sample_path = SUB / "qc" / "qc_sample.csv"
     rv = SUB / "qc" / "qc_review.csv"
+    if sample_path.exists() and not rv.exists() and not a.force:
+        die(f"Đã có {rel(sample_path)} nhưng thiếu {rel(rv)}. Không ghi đè mẫu QC cũ; "
+            "khôi phục phiếu kiểm hoặc dùng --force nếu chấp nhận tạo lại cả hai file.")
     if rv.exists() and not a.force:
         sample_rows, sample = _existing_sample(sample_path, rv, batch)
         hard = [r["image"] for r in sample_rows if (r.get("la_ca_kho") or "").strip().lower() == "yes"]

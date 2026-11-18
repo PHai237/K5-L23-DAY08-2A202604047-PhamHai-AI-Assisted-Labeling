@@ -84,6 +84,10 @@ def main() -> None:
     if sc and not sc.get("pass"):
         rw.append("độ nhất quán (gán lại mù) dưới ngưỡng")
     blockers = []
+    if not rs:
+        blockers.append("thiếu review_stats.json (chưa có thống kê review và bẫy)")
+    elif not rs.get("traps") or not rs.get("gold"):
+        blockers.append("review_stats.json thiếu phần bẫy hoặc phép đo máy trên Gold")
     if unchecked:
         blockers.append(f"còn {len(unchecked)}/{n_img} ảnh mẫu chưa kiểm")
     if warns and any("bỏ qua" in w for w in warns):

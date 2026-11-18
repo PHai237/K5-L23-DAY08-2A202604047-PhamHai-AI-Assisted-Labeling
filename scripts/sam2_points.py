@@ -53,6 +53,7 @@ def main():
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", required=True)
     ap.add_argument("--name", default="mask_overlay", help="tên file ảnh kết quả (không đuôi), ví dụ tuktuk_img013")
+    ap.add_argument("--force", action="store_true", help="cho phép ghi đè ảnh mask và metadata cùng tên đã có")
     a = ap.parse_args()
     path = IMAGES_DIR / a.image
     if not path.exists():
@@ -69,6 +70,11 @@ def main():
             die(f"Click ({x:g},{y:g}) nằm ngoài ảnh {w}x{h}.")
     if box and (box[0] < 0 or box[1] < 0 or box[2] > w or box[3] > h):
         die(f"--box phải nằm trong ảnh {w}x{h}.")
+    o = Path(a.out)
+    jpg_path, metadata_path = o / f"{a.name}.jpg", o / f"{a.name}.json"
+    if not a.force and (jpg_path.exists() or metadata_path.exists()):
+        die(f"Đã có {rel(jpg_path)} hoặc {rel(metadata_path)}. Dùng --name khác để giữ lần click cũ "
+            "(hoặc --force nếu muốn ghi đè).")
     from ultralytics import SAM
     model = SAM(weights_path(a.sam))
     kw = {}
@@ -82,6 +88,8 @@ def main():
     if r.masks is None or len(r.masks.data) == 0:
         die("SAM không trả mask nào: thử click vào giữa vật hơn.")
     m = r.masks.data[0].cpu().numpy() > 0.5
+    if m.shape != (h, w) or not m.any():
+        die(f"SAM trả mask rỗng hoặc sai kích thước {m.shape}; ảnh gốc là {(h, w)}. Thử lại click/box khác.")
     ov = np.array(im).astype(np.float32)
     ov[m] = ov[m] * 0.45 + np.array([230, 25, 75], np.float32) * 0.55
     out = Image.fromarray(ov.astype(np.uint8))
@@ -91,14 +99,13 @@ def main():
         d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=c, outline="white", width=2)
     if box:
         d.rectangle(box, outline="yellow", width=2)
-    o = Path(a.out)
     o.mkdir(parents=True, exist_ok=True)
     polys = mask_to_polys(m.astype(np.uint8))
     for poly in polys:
         points = list(zip(poly[0::2], poly[1::2]))
         if len(points) >= 3:
             d.line(points + [points[0]], fill=(0, 255, 255), width=2)
-    out.save(o / f"{a.name}.jpg", quality=90)
+    out.save(jpg_path, quality=90)
     metadata = {
         "image": a.image,
         "sam": a.sam,
@@ -111,9 +118,9 @@ def main():
         "mask_image_pct": round(float(m.sum() / m.size * 100), 3),
         "polygons": len(polys),
     }
-    (o / f"{a.name}.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Mask: {int(m.sum())} px ({m.sum() / m.size * 100:.1f}% ảnh), {len(polys)} polygon -> {rel(o / f'{a.name}.jpg')}")
-    print(f"Metadata thật (model, click, box, diện tích): {rel(o / f'{a.name}.json')}")
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Mask: {int(m.sum())} px ({m.sum() / m.size * 100:.1f}% ảnh), {len(polys)} polygon -> {rel(jpg_path)}")
+    print(f"Metadata thật (model, click, box, diện tích): {rel(metadata_path)}")
 
 
 if __name__ == "__main__":

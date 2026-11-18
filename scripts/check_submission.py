@@ -146,7 +146,7 @@ def main() -> None:
         if not d.get("traps"):
             E("review_stats.json không có phần bẫy: chạy review_stats.py với --key submission/prelabel/traps_key.json")
         elif d["traps"].get("n", 0) < 12:
-            E(f"review_stats.json: chỉ có {d['traps'].get('n', 0)} bẫy được chấm (cần đủ 12)")
+            E(f"review_stats.json: chỉ có {d['traps'].get('n', 0)} bẫy được chấm (Part 4 yêu cầu tạo và chấm 12 bẫy)")
         if not d.get("gold"):
             E("review_stats.json không có phần gold: chạy review_stats.py với --pre submission/prelabel/pre_traps.coco.json "
               "(file đầy đủ batch+gold, không dùng pre_traps_import) và --gold submission/labels/gold_manual.json")

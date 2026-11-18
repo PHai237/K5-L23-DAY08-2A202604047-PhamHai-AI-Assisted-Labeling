@@ -26,7 +26,7 @@
 
 ## 2. AI error profile (từ `qc/review_stats.md`)
 
-Đã export **24 ảnh Batch** (`submission/labels/batch_reviewed.json`). `review_stats.json` loại **21 đối tượng quanh bẫy** khỏi profile máy, còn **429 box máy** và **521 đối tượng sau duyệt** để tính các tỉ lệ dưới đây. File COCO Batch có 531 annotation kể cả `ignore_region`; không dùng 531 làm mẫu số cho profile máy.
+Đã export **24 ảnh Batch** (`submission/labels/batch_reviewed.json`). `review_stats.json` loại **21 đối tượng quanh bẫy** khỏi profile máy: 11 box từ 440 box pre-label Batch và 10 đối tượng từ 531 annotation sau duyệt. Vì vậy mẫu số dùng dưới đây là **429 box máy** và **521 đối tượng sau duyệt**. Không dùng 531 annotation COCO thô làm mẫu số cho profile đã loại bẫy.
 
 | Trạng thái | Số | Tỉ lệ | Mẫu số |
 |---|---|---|---|

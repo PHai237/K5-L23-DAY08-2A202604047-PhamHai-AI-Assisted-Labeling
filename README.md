@@ -15,7 +15,7 @@
 
 > **Máy gán sẵn, người sửa.** Nhanh hơn vẽ tay — nhưng **bạn** vẫn là chốt chặn chất lượng, và bạn phải **đo** được điều đó.
 
-> **Tiến độ bài cá nhân (18/11/2026):** có bằng chứng Part 1–6: Gold 4 ảnh; tour model và ngưỡng; Batch 24 ảnh sau review, **11/12 bẫy sau Rework** (lượt đầu 8/12 theo xác nhận học viên); 3 mask SAM 2.1 Tiny, 3 quyết định calibration v1.1, QC hai vòng và release candidate 24 ảnh. QC vòng 1 **1/216 đối tượng, 1/8 ảnh → script gợi ý REWORK**; phiếu sau sửa **0/216, 0/8 → script gợi ý RELEASE**, nhưng chỉ kiểm lại ảnh đã sửa, không kiểm độc lập lại cả 8 ảnh. **Quyết định cuối cùng do học viên chốt.** Số liệu, giới hạn và cảnh báo: [REPORT.md](submission/REPORT.md).
+> **Bài cá nhân (18/11/2026):** Gold 4 ảnh; đã thử model và chọn ngưỡng theo lớp; review Batch 24 ảnh (8/12 bẫy lượt đầu, 11/12 sau Rework); 3 mask SAM 2.1 Tiny, 3 quyết định calibration v1.1, hai mốc QC và bộ release 24 ảnh. QC ban đầu có 1/8 ảnh lỗi, sau sửa là 0/8 trong phiếu (chỉ kiểm lại `img_018`). **Quyết định: Release sau Rework.** Xem số liệu và giới hạn tại [REPORT.md](submission/REPORT.md).
 
 ## Bạn sẽ làm gì
 

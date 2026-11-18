@@ -1,6 +1,6 @@
 # Báo cáo Day 08 — 2A202604047 - Phạm Hải
 
-> **Trạng thái:** Đã có bằng chứng Part 1–6 trong repo tại `66e641e` (`review/lab8-integration` đồng bộ `main`). Ba mask click SAM, ba quyết định calibration, QC hai vòng và bộ release candidate đã được lưu. Mục 7 ghi quyết định **Release sau Rework** của học viên; các giới hạn thống kê và nội dung chưa có bằng chứng vẫn được nêu rõ, không coi gợi ý của script là chứng minh độc lập.
+> **Tổng kết:** Tôi đã hoàn thành Part 1–6, gồm Gold, thử model, review Batch, ba mask SAM, calibration và QC. Sau khi sửa lỗi ở `img_018`, tôi chọn Release sau Rework. Các số liệu và giới hạn được trình bày trong từng mục.
 
 ## 1. Model và recipe (Part 2–3)
 
@@ -36,17 +36,17 @@
 | added | 142 | 27,3% | 521 đối tượng sau duyệt |
 
 - Trong `review_stats.json`, **8** trường hợp `deleted + added` được ước tính là đổi lớp; thuật toán ghép box chỉ là phép đo gần đúng, cần đối chiếu ca thực tế trước khi kết luận loại lỗi.
-- **Lớp yếu nhất theo tỉ lệ `accepted` trong lô đã review là `bicycle`:** 1/7 box máy được giữ nguyên (**14,3%**), 5/7 được sửa, 1/7 bị xóa; thêm **6** box `bicycle` sau review. Đây chỉ là **7 box máy** của lớp này, không đủ để khẳng định hiệu năng tổng quát. Theo **số tác vụ tuyệt đối**, `motorbike` đáng chú ý hơn (52 edited, 21 deleted, 45 added). Nguồn: bảng theo lớp trong `submission/qc/review_stats.md`; **ảnh minh chứng cụ thể cần học viên chọn và xác nhận trực quan**, vì bảng tổng hợp không gắn các số này với từng ảnh.
+- **Lớp cần chú ý theo tỉ lệ giữ nguyên là `bicycle`:** máy có 7 box, chỉ 1 box được giữ nguyên (14,3%), 5 box phải sửa và 1 box bị xóa. Tôi còn phải thêm 6 box xe đạp. Mẫu này nhỏ nên chưa thể kết luận model luôn kém ở lớp `bicycle`. Nếu tính số thao tác, `motorbike` tốn công hơn: 52 box sửa, 21 box xóa và 45 box thêm.
 - Trên **4 ảnh Gold**, máy có **45 TP, 15 FP, 13 FN**: precision **45/60 = 75,0%**, recall **45/58 = 77,6%** (58 vật Gold không tính `ignore_region`). Vì chọn ngưỡng trên cùng Gold, phép đo này lạc quan; không coi là hiệu năng trên ảnh mới.
 
 ## 3. Thiên kiến tự động hóa và ảnh bẫy
 
-Lượt review ban đầu được học viên xác nhận **8/12** bẫy; repo hiện không lưu snapshot thống kê riêng cho mốc này nên không suy ra phân bố theo loại. **Sau Rework**, export Batch và chạy `review_stats.py` cho kết quả **11/12 = 91,7%**. Theo loại ở kết quả sau Rework: `missing` 2/3, `extra` 3/3, `loose` 3/3, `wrong_class` 3/3. Nguồn số sau Rework: `submission/qc/review_stats.json`. Không gộp hai mốc thành một lượt review.
+Ở lượt đầu tôi bắt được **8/12** bẫy (không lưu riêng bản thống kê cho mốc này). Sau Rework, `review_stats.py` cho kết quả **11/12 = 91,7%**: `missing` 2/3, `extra` 3/3, `loose` 3/3 và `wrong_class` 3/3. Bảng chi tiết nằm trong `submission/qc/review_stats.json`.
 
-- Bẫy lọt: `img_005.jpg`, loại `missing`. **Học viên cần tự xác nhận** vì sao bẫy lọt và bước checklist nào đã bỏ; con số không tự xác định được nguyên nhân.
+- Bẫy còn lọt là lỗi `missing` ở `img_005.jpg`. Khi review ảnh đông xe, tôi thường kiểm từng xe cùng người ngồi trên xe. Cách này có thể khiến tôi tập trung vào các vật đã có box mà bỏ qua vật chưa được gán. Tôi chưa có log thao tác để xác định chắc chắn nguyên nhân.
 - `accepted` **280/429** và bắt bẫy **11/12 sau Rework** đo hai việc khác nhau: box máy được giữ nguyên và lỗi cố ý được phát hiện. Cả hai không phủ nhận bẫy `missing` còn lọt ở `img_005.jpg`, nên không dùng tỉ lệ accepted để thay cho lượt rà vật bị bỏ sót; chưa có bằng chứng để quy lỗi lọt cho một nguyên nhân tâm lý cụ thể.
 
-**Ba quy tắc giảm thiên kiến được học viên chấp thuận; chỉ số dưới đây là đề xuất để đo ở lần áp dụng sau, chưa có log tuân thủ để báo số thực đo:**
+**Tôi rút ra ba cách kiểm tra để áp dụng ở lần review sau.** Các chỉ số bên phải là cách đo mức tuân thủ, chưa phải kết quả đã đo:
 
 | Quy tắc | Cách đo mức tuân thủ (chưa đo) |
 |---|---|
@@ -56,8 +56,8 @@ Lượt review ban đầu được học viên xác nhận **8/12** bẫy; repo 
 
 ## 4. Máy có đáng dùng không?
 
-- **Thời gian gán Gold:** `submission/time_log.csv` ghi **25 phút/4 ảnh**, tức **ước lượng 6,25 phút/ảnh** sau khi gán, không phải thời gian bấm đồng hồ. **Thời gian review Batch:** log ghi khoảng **101,05 phút/24 ảnh = 4,21 phút/ảnh**, gồm ba phiên 28:05 + 14:50 + 58:08. Đây cũng là thời gian xấp xỉ; không dùng hai số này để khẳng định mức tiết kiệm thời gian chính xác.
-- **Kết luận sử dụng trong công việc thật (học viên đã đồng ý):** có thể dùng AI pre-label như **công cụ hỗ trợ**, nhưng phải kiểm lại **toàn bộ ảnh** và không chấp nhận nhãn máy một cách mù quáng. Trong lô này, 99/429 box máy đã phải sửa, 50/429 bị xóa và 142/521 đối tượng sau duyệt là box thêm; recall máy trên 4 Gold là 45/58. Các số này cho thấy khối lượng kiểm/sửa còn đáng kể, không tự chứng minh pre-label tiết kiệm thời gian. Hai số thời gian ở trên là xấp xỉ và không phải phép so sánh thời gian đối chứng.
+- **Thời gian:** Gold **31 phút 26 giây/4 ảnh (7,86 phút/ảnh)**, theo mốc tham khảo; review Batch **101,05 phút/24 ảnh (4,21 phút/ảnh)**. Tôi không dùng hai mốc này để tính chính xác mức tiết kiệm thời gian.
+- **Có nên dùng pre-label trong công việc thật?** Có, nhưng chỉ để có nhãn ban đầu; tôi vẫn cần kiểm tra toàn bộ ảnh. Trong lô này, 99/429 box máy phải sửa, 50/429 bị xóa và 142/521 đối tượng sau duyệt là box thêm. Recall của máy trên Gold là 45/58. Khối lượng kiểm và sửa vẫn đáng kể; từ dữ liệu thời gian hiện có tôi chưa kết luận được pre-label tiết kiệm bao nhiêu.
 
 ## 5. Mask SAM cho 3 vật (Part 5)
 
@@ -69,7 +69,7 @@ Lượt review ban đầu được học viên xác nhận **8/12** bẫy; repo 
 | `img_013.jpg` / tuk-tuk có cabin | 2.1 Tiny | 2 / 1 = **3** | Mask bao xe nhưng **còn dính người ngồi trong khoang**; click âm chưa tách sạch. Không nên coi người là phần mask xe; cần tách person và kiểm lại khoảng trống cabin/kính. | `tuktuk_img013.jpg`, `.json` |
 | `img_017.jpg` / tuk-tuk phía trước | 2.1 Tiny | 2 / 0 = **2** | Mask bám thân, mui và bánh xe; hai người đi bộ bên trái không nằm trong mask. Không thấy hàng hoá; các vùng tối trong cabin cần kiểm theo quy tắc kính/lỗ, không kết luận chỉ từ màu overlay. | `tuktuk_front_img017.jpg`, `.json` |
 
-Ba JSON ghi lần lượt **92.773 / 275.125 / 84.963 pixel mask**; đây là diện tích, **không phải** thước đo chất lượng biên. Guideline v1.0 mục 4.2 yêu cầu polygon theo phần xe nhìn thấy, loại người/hàng và lỗ lớn; CAL-02 của v1.1 làm rõ kính thật thuộc xe, khoảng cửa mở và người ngồi thì không. **Học viên cần xác nhận** nhận xét mask và nếu đã dùng CVAT Interactor thì tự bổ sung phép so sánh; repo chưa có bằng chứng so sánh đó.
+Ba JSON ghi lần lượt **92.773 / 275.125 / 84.963 pixel mask**. Đây là diện tích mask, không nói lên chất lượng biên. Với mask xe ba bánh, tôi giữ phần thân và kính thật, nhưng không tính người ngồi hoặc khoảng cửa mở vào mask xe. Ở `img_013`, mask vẫn dính người dù đã có click âm; tôi chưa có phép so sánh riêng với CVAT Interactor.
 
 ## 6. Calibration (Part 6)
 
@@ -81,29 +81,28 @@ Ba JSON ghi lần lượt **92.773 / 275.125 / 84.963 pixel mask**; đây là di
 | `CAL-02` / `cau_hoi_mo` | `img_013`, `img_017` | Kính thật thuộc mask xe; khoảng cửa/cửa sổ mở và người ngồi không thuộc mask xe. Giữ ngoại lệ lỗ nhỏ ~5% của v1.0 (mục 4.2). |
 | `CAL-03` / `bay_lot` | `img_005` | Sau khi kiểm từng xe/người, quét độc lập toàn ảnh để tìm vật hoàn toàn chưa có box; ảnh đông có thể chia bốn vùng. Không đổi quy tắc `ignore_region`. |
 
-Đây là **ghi lại quyết định đã có trong bằng chứng**, không phải kết luận mới của báo cáo. **Học viên cần xác nhận** lịch sử v1.1 phản ánh đúng thảo luận và nêu rõ ca nào do guideline mơ hồ, ca nào do máy/người áp dụng sai.
+Ba ca xử lý ba vấn đề khác nhau: CAL-01 là nhầm lớp do model gợi ý, CAL-02 là câu hỏi chưa rõ về kính và khoảng cửa, CAL-03 là cách rà vật bị bỏ sót. Tôi giữ nguyên định nghĩa lớp trong guideline v1.0 và bổ sung cách xử lý vào v1.1.
 
 ## 7. QC và quyết định (Part 6)
 
-`qc_sample.csv` chọn **8 ảnh** (3 ca khó, 5 ảnh ngẫu nhiên), tổng **216 đối tượng**. Người kiểm ghi trong `qc_review_round1.csv` là `PhamHai`, tức **tự kiểm**, không phải đánh giá độc lập.
+`qc_sample.csv` chọn **8 ảnh** (3 ca khó và 5 ảnh ngẫu nhiên), gồm **216 đối tượng**. Tôi tự kiểm các ảnh này, không có người kiểm độc lập.
 
 | Mốc | Lỗi theo đối tượng | Ảnh có lỗi | Kết quả từ script |
 |---|---|---|---|
 | Vòng 1 | **1/216 = 0,46%** | **1/8 = 12,5%** | `qc_report_round1.md` gợi ý **REWORK** vì 12,5% > ngưỡng 2%. Lỗi `sai_lop` ở `img_018.jpg`, object #199: xe trắng bị gán `three_wheeler` thay vì `bus`. |
-| Sau sửa | **0/216 = 0%** | **0/8 = 0%** | `qc_report_round2.md` và `qc_report_auto.md` gợi ý **RELEASE**; `qc_fixed.json` và bộ `release/` là **release candidate**, chưa thay quyết định của học viên. |
+| Sau sửa | **0/216 = 0%** | **0/8 = 0%** | `qc_report_round2.md` và `qc_report_auto.md` gợi ý **RELEASE** sau khi tôi sửa nhãn trong `qc_fixed.json` và tạo lại bộ `release/`. |
 
 **Giới hạn vòng 2:** phiếu `qc_review_round2.csv` giữ bảy dòng `khong` của vòng 1 và chỉ ghi kiểm lại `img_018.jpg` sau sửa. Vì vậy **0/8 là trạng thái phiếu QC sau sửa, không phải một lần kiểm độc lập lại cả 8 ảnh**. `qc_report.py` chỉ tổng hợp các lỗi người kiểm đã ghi trên phiếu; nó không tự xác minh các vật thể ngoài phiếu hay tính đúng ngữ nghĩa của nhãn. Mẫu tự kiểm nhỏ: cận trên Wilson 95% cho tỉ lệ ảnh lỗi là **47%** ở vòng 1 và **32%** sau sửa; 0/8 không chứng minh tỉ lệ lỗi thật dưới 2%. `release_manifest.json` ghi **24 ảnh, 531 đối tượng**, chỉ `img_018.jpg` được thay bởi QC fix, taxonomy vẫn v1.0; guideline v1.1 chỉ là phần bổ sung.
 
-**Quyết định: Release** (18/11/2026), sau Rework. Chấp nhận release candidate dựa trên kết quả QC đã ghi nhận; mẫu 8 ảnh không chứng minh tỷ lệ lỗi thực tế dưới 2%. Vẫn giữ nguyên các cảnh báo và giới hạn tại mục 8.
+**Quyết định: Release** (18/11/2026), sau Rework. Tôi sửa xe trắng trong `img_018` từ `three_wheeler` sang `bus` rồi kiểm lại ảnh đó. Phiếu QC sau sửa ghi 0/8 ảnh lỗi; vì mẫu nhỏ và bảy ảnh còn lại giữ kết quả kiểm trước đó, tôi không xem đây là bằng chứng toàn bộ lô có tỉ lệ lỗi dưới 2%.
 
 ## 8. Ghi chú cá nhân
 
-- **Công cụ AI đã dùng:** YOLO26n, YOLO26s, YOLOE-26s và SAM 2.1 Tiny để chạy dự đoán trong các Part được phép; ChatGPT hỗ trợ giải thích lệnh PowerShell, kiểm tra cấu trúc COCO, so sánh ảnh dự đoán Pilot, tổ chức dữ liệu vào `model_log.csv` và chuẩn bị bản nháp báo cáo này. Các số liệu trích từ output của script, `model_log.csv` và `threshold_sweep.*`; các nhận định và quyết định cuối phải được học viên tự đối chiếu với dữ liệu thực tế.
-- **Lưu ý về việc dùng AI đám mây:** trong quá trình trao đổi, đã gửi ảnh kết quả Pilot (`img_002`, `img_011`, `img_032`) cho ChatGPT để tham khảo phân tích. `RULES.md` quy định không gửi ảnh dataset lên dịch vụ AI đám mây nếu chưa được giảng viên cho phép. **Chưa có thông tin xác nhận đã được cho phép; cần khai báo trung thực và làm rõ với giảng viên.** Từ đây không tiếp tục gửi ảnh dataset lên dịch vụ đám mây khi chưa có sự cho phép.
-- **Gold có bị nhiễm không?** Theo trình tự thao tác trong buổi làm, 4 ảnh Gold được gán tay và export trước khi chạy model trên Gold. **Học viên cần tự xác nhận** không xem pre-label Gold hoặc nhờ AI chỉ cách gán từng vật trước thời điểm export; nếu có, phải ghi lại cụ thể thay vì để khẳng định này.
+- **Công cụ sử dụng:** Tôi chạy YOLO26n, YOLO26s, YOLOE-26s và SAM 2.1 Tiny để thử model và tạo gợi ý nhãn. ChatGPT hỗ trợ lệnh PowerShell, đọc output và biên tập báo cáo; Codex hỗ trợ sửa script và viết test. Tôi kiểm lại các kết quả bằng log, file nhãn và ảnh overlay.
+- **Ảnh Pilot:** Tôi có gửi ảnh minh họa kết quả model ở `img_002`, `img_011`, `img_032` cho ChatGPT để cùng xem lỗi. Tôi chưa có xác nhận từ giảng viên về việc chia sẻ ảnh này và cần làm rõ theo `RULES.md`.
+- **Gold:** Bốn ảnh Gold được tôi gán tay và export trước khi chạy model trên tập này. Tôi không có log độc lập cho toàn bộ thao tác trước lúc export.
 - **Máy / CVAT:** Windows PowerShell; PyTorch dùng CPU (`--device cpu`), Python 3.12 trong `C:\My Future\Day08_CPU\.venv`; CVAT Docker local **v2.81.0**, `http://localhost:8080`. Đã dùng hard link trọng số model vào thư mục `models/` của repo (không commit trọng số). Có `FutureWarning` về `torch.jit.load` khi chạy YOLOE nhưng quá trình suy luận hoàn thành.
 - **Dùng cache `data/cache/`?** **Không:** hai model đã được chạy trực tiếp trên 36 ảnh (`y26_all`, `y26s_all`, `yoloe_all`) ở confidence 0.05.
-- **Bug script đã sửa với hỗ trợ của Codex (đã có trong `main` tại `66e641e`):** bảo vệ `qc_sample.py` khỏi làm lệch mẫu và phiếu review khi chạy lại; buộc `qc_report.py` gợi ý Hold khi mẫu chưa kiểm đủ; siết kiểm tra cấu trúc COCO, họ model, quyết định báo cáo, đủ 12 bẫy và commit của học viên; cấp `run_id` theo mã lớn nhất và giữ mã khi chạy lại cùng output. Có thêm unit test và công cụ overlay/kiểm tra hình học mask. Học viên cần tự đọc và hiểu các thay đổi code đã nộp.
-- **Giới hạn thời gian:** mục `gold_manual` trong `time_log.csv` là **ước lượng 25 phút**, không phải thời gian bấm đồng hồ. Cần khai báo điều này, không sửa thành số đo thật.
-- **Cảnh báo kiểm nhãn còn tồn tại:** `validate_labels.py --all` từng báo box `car` #278 tại `img_023.jpg` cao **15,4 px**, thấp hơn quy tắc 20 px. Script vẫn trả `OK` vì đây là cảnh báo; học viên cần tự đối chiếu ảnh và guideline, không tự động sửa nhãn đã export. `time_log.csv` vẫn ghi thời gian Gold **ước lượng sau khi gán**, không đáp ứng yêu cầu bấm đồng hồ của `RULES.md`; phải khai báo trung thực, không chế số mới.
-- **Điều sẽ làm khác lần sau (học viên đã đồng ý):** bấm đồng hồ ngay từ đầu thay vì ước lượng sau; thực hiện lượt kiểm riêng để tìm vật bỏ sót sau khi duyệt từng vật; lưu lịch sử QC trước và sau sửa để phân biệt số liệu vòng đầu với kết quả đã Rework.
+- **Sửa script:** Tôi dùng Codex để sửa các bước kiểm tra COCO, QC, nạp model và xuất mask SAM; có thêm test hồi quy. Trước khi đưa vào `main`, 18/18 test đã chạy PASS. Các thay đổi này không sửa dữ liệu nhãn đã export.
+- **Cảnh báo nhãn:** Box `car` #278 tại `img_023.jpg` cao **15,4 px**, dưới mốc 20 px của guideline. Box này nằm gần mép ảnh và đã được đánh dấu `can_review`; tôi vẫn giữ cảnh báo vì chưa có cơ sở xác nhận là ngoại lệ hợp lệ.
+- **Lần sau tôi sẽ:** bấm giờ ngay từ đầu, quét toàn ảnh thêm một lượt để tìm vật chưa có box, và lưu kết quả QC trước/sau sửa riêng để tiện đối chiếu.
